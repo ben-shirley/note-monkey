@@ -1,14 +1,18 @@
 import numpy as np
 import cv2
 import keras
+import tensorflow as tf
 from model.basemodel import BaseModel
 import preprocessor
+import os
 
 class EMNISTModel(BaseModel):
     def __init__(self, filepath: str, class_mapping_path: str, verbosity:int=0):
         super().__init__(verbosity=verbosity)
 
-        self.model = keras.models.load_model(filepath) 
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+        self.model = tf.keras.models.load_model(filepath) 
         self.class_mapping = {}
         with open(class_mapping_path) as file:
             for line in file:
@@ -23,7 +27,7 @@ class EMNISTModel(BaseModel):
         prediction = self.model.predict(np.array([processed_image]))
         classification = self._postprocess(prediction)
         
-        if self.verbosity >= 2 or classification == 'L':  
+        if self.verbosity >= 2:  
             cv2.imshow(f"class: {classification}",cv2.resize(processed_image, (100,100)))
             cv2.waitKey(0)
             cv2.destroyAllWindows()

@@ -3,9 +3,14 @@
 The goal of this project is to be able to read Handwriting.
 
 ## Running the project
-firstly, install the dependencies in the requirements.txt file (doesn't actually exist at the moment)
+This project uses python 3.11.
+Firstly, install the dependencies in the requirements.txt file.
+**TODO**: There is an additional repository (DeslantImg) that this project depends on. For now it must be installed manually, but eventually I'll fix it in 
+the requirements.txt file!
 
-next...
+
+
+
 
 ## Verbosity Readings
 each segmenter class has its own verbosity reading. 

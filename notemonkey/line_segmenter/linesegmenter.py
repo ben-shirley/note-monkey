@@ -1,4 +1,6 @@
 from word_segmenter.base_word_segmenter import BaseWordSegmenter
+import numpy as np
+from line import Line
 
 class LineSegmenter():
     
@@ -6,5 +8,5 @@ class LineSegmenter():
         self.verbosity = verbosity
         self.word_segmenter = word_segmenter
 
-    def segment():
+    def segment(image: np.ndarray) -> list[Line]:
         raise NotImplementedError()

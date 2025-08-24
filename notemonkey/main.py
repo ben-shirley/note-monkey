@@ -16,7 +16,7 @@ if __name__ == "__main__":
     #model = BaseModel()
     word_segmenter = ConnectedComponentWordSegmenter(model, verbosity=0)
     line_segmenter = ProcessingLineSegmenter(word_segmenter, verbosity=0)
-    handler = ImageHandler("./datasets/test")
+    handler = ImageHandler("./datasets/misc-images")
     handler.image_delivery_mode = DeliveryMode.IN_ORDER
     for i in range(3):
         image = handler.get_new_image()

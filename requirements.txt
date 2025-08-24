@@ -6,7 +6,7 @@ charset-normalizer==3.3.2
 contourpy==1.2.0
 create-license==2.1.1
 cycler==0.12.1
-deslant-img @ file:///home/bensh/Documents/code/DeslantImg
+deslant-img @ file:///home/ben/Documents/work/DeslantImg
 docopt==0.6.2
 filelock==3.15.4
 flatbuffers==24.3.25
