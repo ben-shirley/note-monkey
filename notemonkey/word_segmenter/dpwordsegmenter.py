@@ -7,23 +7,29 @@ from sklearn.cluster import DBSCAN
 from imagehandler import ImageHandler 
 from word_segmenter.base_word_segmenter import BaseWordSegmenter
 from model.basemodel import BaseModel
-from wordchunk import Chunk
+from components.wordchunk import Chunk
 
 
 class DPWordChunkSegmenter(BaseWordSegmenter):
     """
-    Class that is responsible for taking lines and segmenting them into cleanly seperable sections
+    Responsible for taking lines and segmenting them into cleanly seperable sections
     (seperating non-connected text)
+
+    Uses dynamic programming to find paths of whitespace through the image, and then
+    clusters these paths to find the best places to cut.
     """
-    def __init__(self, model: BaseModel, verbosity:int = 0):
+    def __init__(
+        self, 
+        model: BaseModel, 
+        verbosity:int = 0
+    ) -> None:
         super().__init__(model, verbosity=verbosity)
 
-    def segment(self, image: np.ndarray) -> list[np.ndarray]:
-        """First goes through every pixel in the top row and attempts to find the shortest
-        path to the bottom row that does not touch a black pixel.
-        
-        Then, analyses the set of lines generated to find the number of seperation points
-        (using some sort of clustering algorithm), and makes the cuts"""
+    def segment(
+        self, 
+        image: np.ndarray
+    ) -> list[np.ndarray]:
+        """Segments the image into chunks of connected components"""
 
         # first, resize the image, and crop it tightly
         image = preprocessor.crop_image_tight(image)
@@ -45,10 +51,8 @@ class DPWordChunkSegmenter(BaseWordSegmenter):
                 paths.append(np.array(path))
         
         paths = np.array(paths)
-        # Now, we need to take these paths, and seperate them into clusters.
         labels = self._dbscan_path_clustering(paths, scaled_down_image.shape[1])
 
-        # for each cluster, find the median line
         clusters = {label: [] for label in labels}
         for i in range(len(paths)):
             clusters[labels[i]].append(paths[i])
@@ -60,42 +64,25 @@ class DPWordChunkSegmenter(BaseWordSegmenter):
             
         # to test this we need to be able to visualise
         if self.verbosity>=3:
-            # create a random colour per class
-            print(f"image shape: {scaled_down_image.shape}")
-            print(f"{len(np.unique(labels))} classes found")
+            self._visualise_dp(scaled_down_image, next_step, paths, labels, median_lines)
 
-            colours = []
-            for i in range(len(np.unique(labels))):
-                colours.append((random.randint(0, 255),random.randint(0, 255),random.randint(0, 255)))
-            
-            visualised_image = (scaled_down_image.copy() * 255).astype(np.uint8)
-            visualised_image = cv2.cvtColor(visualised_image, cv2.COLOR_GRAY2BGR)
-            for start_index in range(len(paths)):
-                path = paths[start_index]
-                if path is not None:
-                    for y_value in range(visualised_image.shape[0]):
-                        visualised_image[y_value, path[y_value]] = colours[labels[start_index]]
-            
-            # add the median lines - with a thickness of 3
-            for i in range(len(median_lines)):
-                for y_index in range(visualised_image.shape[0]):
-                    if median_lines[i][y_index] < visualised_image.shape[1] -1 :
-                        visualised_image[y_index, median_lines[i][y_index]+1] = (0, 0, 255)
-                    if median_lines[i][y_index] > 0:
-                        visualised_image[y_index, median_lines[i][y_index]-1] = (0, 0, 255)
-                    visualised_image[y_index, median_lines[i][y_index]] = (0, 0, 255)
-                    #print(y_index, median_lines[i][y_index], visualised_image[y_index, median_lines[i][y_index]])
-            
-            #visualised_image = preprocessor.resize_img(visualised_image, resize_factor=4)
-            cv2.imshow("paths", visualised_image)
-            cv2.waitKey(0)
+        segments = self._segment_image(image, scaled_down_image, median_lines)
 
-        # finally, use the median paths to create our splits 
-        # we crop tight, so in theory, the outsides contain tokens too
-        # we also scaled down the image, so we need to work in percentages back in the original image
+        return segments
+
+    def _segment_image(
+        self, 
+        image:np.ndarray, 
+        scaled_down_image:np.ndarray, 
+        median_lines:np.ndarray
+    ) -> list[Chunk]:
+        """
+        Use the median paths to create our splits
+        we crop tight, so in theory, the outsides contain tokens too
+        we also scaled down the image, so we need to work in percentages back in the original image
+        """
 
         desired_paths = self._scale_paths(image, scaled_down_image, median_lines)
-
 
         # Now the paths are scaled, we can chop up our original image
         segments = []
@@ -120,11 +107,51 @@ class DPWordChunkSegmenter(BaseWordSegmenter):
 
             
             segments.append(Chunk(segment_image, self.model))
-        return segments
-           
+
+
+    def _visualise_dp(
+        self, 
+        image:np.ndarray, 
+        paths:np.ndarray, 
+        labels:np.ndarray, 
+        median_lines:np.ndarray
+    ) -> None:
+        """Used purely for debugging purposes to see what the DP algorithm is doing"""
+
+        print(f"image shape: {image.shape}")
+        print(f"{len(np.unique(labels))} classes found")
+
+        colours = []
+        for i in range(len(np.unique(labels))):
+            colours.append((random.randint(0, 255),random.randint(0, 255),random.randint(0, 255)))
+
+        visualised_image = (image.copy() * 255).astype(np.uint8)
+        visualised_image = cv2.cvtcolor(visualised_image, cv2.color_gray2bgr)
+        for start_index in range(len(paths)):
+            path = paths[start_index]
+            if path is not None:
+                for y_value in range(visualised_image.shape[0]):
+                    visualised_image[y_value, path[y_value]] = colours[labels[start_index]]
+        
+        # add the median lines - with a thickness of 3
+        for i in range(len(median_lines)):
+            for y_index in range(visualised_image.shape[0]):
+                if median_lines[i][y_index] < visualised_image.shape[1] -1 :
+                    visualised_image[y_index, median_lines[i][y_index]+1] = (0, 0, 255)
+                if median_lines[i][y_index] > 0:
+                    visualised_image[y_index, median_lines[i][y_index]-1] = (0, 0, 255)
+                visualised_image[y_index, median_lines[i][y_index]] = (0, 0, 255)
+                #print(y_index, median_lines[i][y_index], visualised_image[y_index, median_lines[i][y_index]])
+        
+        #visualised_image = preprocessor.resize_img(visualised_image, resize_factor=4)
+        cv2.imshow("paths", visualised_image)
+        cv2.waitKey(0)
 
                    
-    def _perform_dp(self, image:np.ndarray) -> np.ndarray:
+    def _perform_dp(
+        self, 
+        image:np.ndarray
+    ) -> np.ndarray:
         """Performs DP on the image, and then returns the next_step array"""
         cache = np.array([[0 for j in range(image.shape[1])] for i in range(image.shape[0])]).astype(np.float32)
         next_step = cache.copy().astype(int)
@@ -168,9 +195,13 @@ class DPWordChunkSegmenter(BaseWordSegmenter):
                         next_step[y_index, x_index] = x_index + 1
         return next_step
 
-    def _scale_paths(self, scaled_image: np.ndarray, image: np.ndarray,
-                      median_lines: list[np.ndarray]) -> np.ndarray:
-        # start by scaling the paths in the x-axis
+    def _scale_paths(
+        self, 
+        scaled_image: np.ndarray, 
+        image: np.ndarray,
+        median_lines: list[np.ndarray]
+    ) -> np.ndarray:
+        """Scales the paths found in the scaled image back to the original image size"""
         scaled_paths_x = []
         scaled_width = scaled_image.shape[1]
         width = image.shape[1]
@@ -229,11 +260,15 @@ class DPWordChunkSegmenter(BaseWordSegmenter):
 
 
 
-    def _dbscan_path_clustering(self, paths:np.array, img_width, eps=0.075, min_samples=3):
+    def _dbscan_path_clustering(
+        self, 
+        paths:np.array, 
+        img_width, 
+        eps=0.075, 
+        min_samples=3
+    ) -> np.ndarray:
         """Clustering algorithm called by dp segment by whitespace
         Given the set of paths, seperates them into clusters and returns the different groups."""
-        #TODO hyperparameter adjustment
-        #TODO what metric is best?
         #normalise paths to be between 0 and 1
         normalised_paths = paths / img_width
         min_value = 0
@@ -243,16 +278,3 @@ class DPWordChunkSegmenter(BaseWordSegmenter):
         cluster_maker = DBSCAN(eps=eps, min_samples=min_samples).fit(normalised_paths)
         return cluster_maker.labels_
     
-
-if __name__ == "__main__":
-    handler = ImageHandler("lines-dataset/a01/a01-020x")
-    
-    image = handler.get_new_image()
-    image = preprocessor.preprocess_img(image)
-    
-    #image = preprocessor.resize_img(image, resize_factor=0.5)
-    image = preprocessor.remove_inperfections(image)
-    #image = preprocessor.hough_transform_rotation(image)
-    image = preprocessor.otsu_thresholding(image)/255
-    segmenter = DPWordChunkSegmenter()
-    segmenter.segment(image)

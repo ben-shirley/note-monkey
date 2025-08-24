@@ -124,7 +124,7 @@ def blur_image(img, size=(5, 5)):
     new_img = cv2.blur(new_img, size)
     return 255 - new_img
 
-def crop_image_tight(image, direction='both'):
+def crop_image_tight(image, direction='both', target_color=0):
     """Intended for use with a binarised image
     crops to closest fit containing only black pixels"""
     
@@ -133,25 +133,23 @@ def crop_image_tight(image, direction='both'):
     if image.shape[0] == 0 or image.shape[1] == 0:
         return image
 
-    white_value = 1 if 1 in np.unique(image) else 255
-    if not np.all(image == white_value):
-
+    if np.any(image == target_color):
         top_dist = 0
         bottom_dist = image.shape[0]
         if direction == 'both' or direction == 'y':
-            while np.all(image[top_dist] == white_value):
+            while not np.any(image[top_dist] == target_color):
                 top_dist += 1
             
-            while np.all(image[bottom_dist-1] == white_value):
+            while not np.any(image[bottom_dist-1] == target_color):
                 bottom_dist -= 1
             
         left_dist = 0
         right_dist = image.shape[1]
         if direction == 'both' or direction == 'x':
-            while np.all(image[:, left_dist] == white_value):
+            while not np.any(image[:, left_dist] == target_color):
                 left_dist += 1
             
-            while np.all(image[:, right_dist-1] == white_value):
+            while not np.any(image[:, right_dist-1] == target_color):
                 right_dist -= 1
         return image[top_dist:bottom_dist, left_dist:right_dist]
     else:

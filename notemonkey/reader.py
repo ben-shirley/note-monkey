@@ -2,6 +2,7 @@
 from line_segmenter.linesegmenter import LineSegmenter
 from word_segmenter.base_word_segmenter import BaseWordSegmenter
 from model.basemodel import BaseModel
+from components.line import Line
 
 
 class Reader():
@@ -15,5 +16,15 @@ class Reader():
 
     def read(self, img):
         
-        self.line_segmenter.segment(img)
+        lines = self.line_segmenter.segment(img)
+        for line in lines:
+            words = self.word_segmenter.segment(line.image)
+            line.set_words(words)
+            for word in line.get_words():
+                value = self.model.predict(word)
+                word.set_value(value)
+        
+        return lines
+                
+
         

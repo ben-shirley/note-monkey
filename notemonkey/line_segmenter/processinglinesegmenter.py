@@ -16,7 +16,7 @@ from sklearn.neighbors import KernelDensity
 from scipy.signal import argrelextrema
 from copy import deepcopy
 
-from line import Line
+from components.line import Line
 from word_segmenter.base_word_segmenter import BaseWordSegmenter
 from line_segmenter.linesegmenter import LineSegmenter
 import preprocessor
@@ -29,8 +29,8 @@ class ProcessingLineSegmenter(LineSegmenter):
     """class that handles the segmentation
     of an image into lines"""
 
-    def __init__(self, word_segmenter: BaseWordSegmenter, verbosity:int = 0 ):
-        super().__init__(word_segmenter, verbosity=verbosity)
+    def __init__(self, verbosity:int = 0 ):
+        super().__init__(verbosity=verbosity)
         self.chunk_percentage = 0.2
     
 
@@ -104,6 +104,11 @@ class ProcessingLineSegmenter(LineSegmenter):
         graph = self._construct_graph(word_layout)
         components = self._traverse_graph(graph)
         lines = self._create_lines(components, proccessed_img, chunk_width)
+
+        if self.verbosity>=2:
+            for line in lines:
+                cv2.imshow("line", line.image)
+                cv2.waitKey(0)
 
         return lines
     
@@ -225,12 +230,12 @@ class ProcessingLineSegmenter(LineSegmenter):
 
         return columns
 
-    def _create_lines(self, components, image, chunk_width):
+    def _create_lines(self, components, image, chunk_width) -> list[Line]:
         """creates a list of word labels"""
         lines = []
         for component in components:
             line_img = self._create_line_image(image, component, chunk_width)
-            lines.append(Line(line_img, self.word_segmenter))
+            lines.append(Line(line_img))
         return lines
 
     def _traverse_graph(self, graph):
